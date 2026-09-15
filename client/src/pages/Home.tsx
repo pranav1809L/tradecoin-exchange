@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -144,6 +144,12 @@ export default function Home() {
   const wallet = accountQuery.data?.wallet;
   const displayName = user?.name?.split(" ")[0] ?? "Trader";
 
+  useEffect(() => {
+    if (selected?.currentPrice && (!price || Number(price) <= 0)) {
+      setPrice(String(selected.currentPrice));
+    }
+  }, [selected?.id, selected?.currentPrice, price]);
+
   function selectProduct(product: Product) {
     setSelectedProductId(product.id);
     setPrice(product.currentPrice);
@@ -156,8 +162,19 @@ export default function Home() {
       startLogin();
       return;
     }
+    const normalizedPrice = price.trim().replace(/,/g, "");
+    const numericPrice = Number(normalizedPrice);
+    const numericQuantity = Number(quantity);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      toast.error("Enter a limit price greater than zero.");
+      return;
+    }
+    if (!Number.isInteger(numericQuantity) || numericQuantity <= 0) {
+      toast.error("Enter a quantity greater than zero.");
+      return;
+    }
     try {
-      await createOrder.mutateAsync({ productId: selected.id, side, price: price || selected.currentPrice, quantity: Number(quantity) });
+      await createOrder.mutateAsync({ productId: selected.id, side, price: numericPrice.toFixed(2), quantity: numericQuantity });
       toast.success(`${side === "BUY" ? "Buy" : "Sell"} order submitted`, { description: "The server matched the order using price-time priority." });
       await Promise.all([utils.markets.detail.invalidate({ productId: selected.id }), utils.account.overview.invalidate(), utils.markets.products.invalidate()]);
     } catch (error) {
