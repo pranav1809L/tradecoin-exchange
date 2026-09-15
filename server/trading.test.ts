@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { centsToMoney, moneyToCents, normalizeOrderPrice } from "./trading";
+import { amountToCents, centsToMoney, moneyToCents, normalizeOrderPrice } from "./trading";
 
 describe("TradeCoin monetary rules", () => {
   it("converts prices to cents without floating-point drift", () => {
     expect(moneyToCents("490")).toBe(BigInt(49000));
     expect(moneyToCents("490.5")).toBe(BigInt(49050));
     expect(centsToMoney(BigInt(49050))).toBe("490.50");
+    expect(amountToCents("0.00")).toBe(BigInt(0));
   });
 
   it("preserves exact two-decimal settlement totals", () => {

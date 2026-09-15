@@ -5,12 +5,17 @@ import { holdings, orders, priceHistory, products, trades, transactions, wallets
 
 export type OrderSide = "BUY" | "SELL";
 
-export function moneyToCents(input: string): bigint {
+export function amountToCents(input: string): bigint {
   const value = input.trim();
   if (!/^\d+(\.\d{1,2})?$/.test(value)) throw new TRPCError({ code: "BAD_REQUEST", message: "Price must be a positive amount with up to 2 decimals." });
   const [whole, fraction = ""] = value.split(".");
   const cents = `${fraction}00`.slice(0, 2);
   const amount = BigInt(whole) * BigInt(100) + BigInt(cents);
+  return amount;
+}
+
+export function moneyToCents(input: string): bigint {
+  const amount = amountToCents(input);
   if (amount <= BigInt(0)) throw new TRPCError({ code: "BAD_REQUEST", message: "Price must be greater than zero." });
   return amount;
 }
@@ -50,10 +55,10 @@ export async function placeLimitOrder(input: { userId: number; productId: number
 
     let holding = (await tx.select().from(holdings).where(and(eq(holdings.userId, input.userId), eq(holdings.productId, input.productId))).limit(1))[0];
     if (input.side === "BUY") {
-      const available = moneyToCents(wallet.balance) - moneyToCents(wallet.lockedBalance);
+      const available = amountToCents(wallet.balance) - amountToCents(wallet.lockedBalance);
       const required = priceCents * BigInt(input.quantity);
       if (available < required) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Insufficient available TradeCoin for this order." });
-      await tx.update(wallets).set({ lockedBalance: centsToMoney(moneyToCents(wallet.lockedBalance) + required) }).where(eq(wallets.id, wallet.id));
+      await tx.update(wallets).set({ lockedBalance: centsToMoney(amountToCents(wallet.lockedBalance) + required) }).where(eq(wallets.id, wallet.id));
     } else {
       if (!holding || holding.quantity - holding.lockedQuantity < input.quantity) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Insufficient available inventory for this sell order." });
       await tx.update(holdings).set({ lockedQuantity: holding.lockedQuantity + input.quantity }).where(eq(holdings.id, holding.id));
@@ -97,14 +102,14 @@ export async function placeLimitOrder(input: { userId: number; productId: number
 
       const buyerReservedForFill = moneyToCents(buyerOrder.price) * BigInt(fillQuantity);
       await tx.update(wallets).set({
-        lockedBalance: centsToMoney(moneyToCents(buyerWallet.lockedBalance) - buyerReservedForFill),
-        balance: centsToMoney(moneyToCents(buyerWallet.balance) - total),
+        lockedBalance: centsToMoney(amountToCents(buyerWallet.lockedBalance) - buyerReservedForFill),
+        balance: centsToMoney(amountToCents(buyerWallet.balance) - total),
       }).where(eq(wallets.id, buyerWallet.id));
-      await tx.update(wallets).set({ balance: centsToMoney(moneyToCents(sellerWallet.balance) + total) }).where(eq(wallets.id, sellerWallet.id));
+      await tx.update(wallets).set({ balance: centsToMoney(amountToCents(sellerWallet.balance) + total) }).where(eq(wallets.id, sellerWallet.id));
 
       if (buyerHolding) {
         const newQuantity = buyerHolding.quantity + fillQuantity;
-        const priorCost = moneyToCents(buyerHolding.averageCost) * BigInt(buyerHolding.quantity);
+        const priorCost = amountToCents(buyerHolding.averageCost) * BigInt(buyerHolding.quantity);
         const averageCost = newQuantity === 0 ? "0.00" : centsToMoney((priorCost + total) / BigInt(newQuantity));
         await tx.update(holdings).set({ quantity: newQuantity, averageCost }).where(eq(holdings.id, buyerHolding.id));
       } else {
@@ -148,7 +153,7 @@ export async function cancelOrder(userId: number, orderId: number) {
     const wallet = (await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1))[0];
     if (order.orderType === "BUY" && wallet) {
       const release = moneyToCents(order.price) * BigInt(remaining);
-      await tx.update(wallets).set({ lockedBalance: centsToMoney(moneyToCents(wallet.lockedBalance) - release) }).where(eq(wallets.id, wallet.id));
+      await tx.update(wallets).set({ lockedBalance: centsToMoney(amountToCents(wallet.lockedBalance) - release) }).where(eq(wallets.id, wallet.id));
       await tx.insert(transactions).values({ userId, productId: order.productId, type: "CANCEL_RELEASE", amount: centsToMoney(release), quantity: remaining, description: `Released reservation from cancelled order #${order.id}` });
     } else {
       const holding = (await tx.select().from(holdings).where(and(eq(holdings.userId, userId), eq(holdings.productId, order.productId))).limit(1))[0];
