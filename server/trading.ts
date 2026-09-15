@@ -21,6 +21,10 @@ export function centsToMoney(cents: bigint): string {
   return `${sign}${absolute / BigInt(100)}.${(absolute % BigInt(100)).toString().padStart(2, "0")}`;
 }
 
+export function normalizeOrderPrice(input: string | undefined, marketPrice: string): string {
+  return input?.trim() ? input : marketPrice;
+}
+
 function amountFor(price: string, quantity: number) {
   return centsToMoney(moneyToCents(price) * BigInt(quantity));
 }
@@ -29,15 +33,17 @@ function min(a: number, b: number) {
   return a < b ? a : b;
 }
 
-export async function placeLimitOrder(input: { userId: number; productId: number; side: OrderSide; price: string; quantity: number }) {
+export async function placeLimitOrder(input: { userId: number; productId: number; side: OrderSide; price?: string; quantity: number }) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database is not available." });
-  const priceCents = moneyToCents(input.price);
   if (!Number.isInteger(input.quantity) || input.quantity <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Quantity must be greater than zero." });
 
   return db.transaction(async (tx) => {
     const product = (await tx.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
     if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found." });
+    // An omitted/blank price means “use the current simulated market price”.
+    // Explicit zero, negative, or malformed values still fail closed in moneyToCents.
+    const priceCents = moneyToCents(normalizeOrderPrice(input.price, product.currentPrice));
 
     const wallet = (await tx.select().from(wallets).where(eq(wallets.userId, input.userId)).limit(1))[0];
     if (!wallet) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Wallet is not initialized for this account." });

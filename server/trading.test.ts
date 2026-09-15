@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centsToMoney, moneyToCents } from "./trading";
+import { centsToMoney, moneyToCents, normalizeOrderPrice } from "./trading";
 
 describe("TradeCoin monetary rules", () => {
   it("converts prices to cents without floating-point drift", () => {
@@ -16,6 +16,13 @@ describe("TradeCoin monetary rules", () => {
     expect(() => moneyToCents("0")).toThrow("greater than zero");
     expect(() => moneyToCents("-10")).toThrow("positive amount");
     expect(() => moneyToCents("10.999")).toThrow("up to 2 decimals");
+  });
+
+  it("uses the market price when the order price is blank", () => {
+    expect(normalizeOrderPrice("", "336.14")).toBe("336.14");
+    expect(normalizeOrderPrice("   ", "336.14")).toBe("336.14");
+    expect(normalizeOrderPrice(undefined, "336.14")).toBe("336.14");
+    expect(normalizeOrderPrice("335.00", "336.14")).toBe("335.00");
   });
 });
 
