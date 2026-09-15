@@ -59,6 +59,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (existingDeposit.length === 0) {
     await db.insert(transactions).values({ userId: savedUser.id, type: "DEPOSIT", amount: initialBalance, description: "Welcome allocation of TradeCoin" });
   }
+  await ensureStarterInventory(savedUser.id);
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -66,6 +67,24 @@ export async function getUserByOpenId(openId: string) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
+}
+
+async function ensureStarterInventory(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const starterProduct = (await db.select().from(products).orderBy(asc(products.id)).limit(1))[0];
+  if (!starterProduct) return;
+  const alreadyGranted = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.userId, userId), eq(transactions.description, "Starter inventory grant"))).limit(1);
+  if (alreadyGranted.length > 0) return;
+
+  const starterQuantity = 5;
+  const existingHolding = (await db.select().from(holdings).where(and(eq(holdings.userId, userId), eq(holdings.productId, starterProduct.id))).limit(1))[0];
+  if (existingHolding) {
+    await db.update(holdings).set({ quantity: existingHolding.quantity + starterQuantity }).where(eq(holdings.id, existingHolding.id));
+  } else {
+    await db.insert(holdings).values({ userId, productId: starterProduct.id, quantity: starterQuantity, lockedQuantity: 0, averageCost: starterProduct.currentPrice });
+  }
+  await db.insert(transactions).values({ userId, productId: starterProduct.id, type: "DEPOSIT", amount: "0.00", quantity: starterQuantity, description: "Starter inventory grant" });
 }
 
 export async function listProducts(input: { query?: string; category?: string; limit: number }) {
@@ -117,6 +136,7 @@ export async function getAccountOverview(userId: number) {
     await db.insert(wallets).values({ userId, balance: initialBalance, lockedBalance: "0.00" });
     wallet = (await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1))[0] ?? null;
   }
+  await ensureStarterInventory(userId);
   const userHoldings = await db.select({ holding: holdings, product: products }).from(holdings).innerJoin(products, eq(holdings.productId, products.id)).where(eq(holdings.userId, userId)).orderBy(desc(holdings.quantity));
   const activeOrders = await db.select({ order: orders, product: products }).from(orders).innerJoin(products, eq(orders.productId, products.id)).where(and(eq(orders.userId, userId), inArray(orders.status, ["OPEN", "PARTIALLY_FILLED"]))).orderBy(desc(orders.createdAt)).limit(30);
   const userTransactions = await db.select({ transaction: transactions, product: products }).from(transactions).leftJoin(products, eq(transactions.productId, products.id)).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt), desc(transactions.id)).limit(30);
