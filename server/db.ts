@@ -124,19 +124,21 @@ export async function getUserByOpenId(openId: string) {
 async function ensureStarterInventory(userId: number) {
   const db = await getDb();
   if (!db) return;
-  const starterProduct = (await db.select().from(products).orderBy(asc(products.id)).limit(1))[0];
-  if (!starterProduct) return;
-  const alreadyGranted = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.userId, userId), eq(transactions.description, "Starter inventory grant"))).limit(1);
+  await ensureBuiltInCatalog();
+  const alreadyGranted = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.userId, userId), eq(transactions.description, "Starter stock bundle grant"))).limit(1);
   if (alreadyGranted.length > 0) return;
 
+  const starterProducts = await db.select().from(products).where(inArray(products.name, BUILT_IN_STOCKS.map(([name]) => name)));
   const starterQuantity = 5;
-  const existingHolding = (await db.select().from(holdings).where(and(eq(holdings.userId, userId), eq(holdings.productId, starterProduct.id))).limit(1))[0];
-  if (existingHolding) {
-    await db.update(holdings).set({ quantity: existingHolding.quantity + starterQuantity }).where(eq(holdings.id, existingHolding.id));
-  } else {
-    await db.insert(holdings).values({ userId, productId: starterProduct.id, quantity: starterQuantity, lockedQuantity: 0, averageCost: starterProduct.currentPrice });
+  for (const product of starterProducts) {
+    const existingHolding = (await db.select().from(holdings).where(and(eq(holdings.userId, userId), eq(holdings.productId, product.id))).limit(1))[0];
+    if (existingHolding) {
+      await db.update(holdings).set({ quantity: existingHolding.quantity + starterQuantity }).where(eq(holdings.id, existingHolding.id));
+    } else {
+      await db.insert(holdings).values({ userId, productId: product.id, quantity: starterQuantity, lockedQuantity: 0, averageCost: product.currentPrice });
+    }
+    await db.insert(transactions).values({ userId, productId: product.id, type: "DEPOSIT", amount: "0.00", quantity: starterQuantity, description: "Starter stock bundle grant" });
   }
-  await db.insert(transactions).values({ userId, productId: starterProduct.id, type: "DEPOSIT", amount: "0.00", quantity: starterQuantity, description: "Starter inventory grant" });
 }
 
 export async function listProducts(input: { query?: string; category?: string; limit: number }) {
