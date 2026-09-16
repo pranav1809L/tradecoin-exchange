@@ -201,7 +201,26 @@ export async function getAccountOverview(userId: number) {
     ...boughtTrades.map(({ trade, product }) => ({ trade, product, side: "BUY" as const })),
     ...soldTrades.map(({ trade, product }) => ({ trade, product, side: "SELL" as const })),
   ].sort((a, b) => new Date(b.trade.executedAt).getTime() - new Date(a.trade.executedAt).getTime()).slice(0, 50);
-  return { wallet, holdings: userHoldings, activeOrders, transactions: userTransactions, tradeHistory };
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfDay);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const calculateProfit = (since: Date) => tradeHistory.reduce((total, entry) => {
+    if (new Date(entry.trade.executedAt) < since) return total;
+    const referenceProfit = entry.side === "SELL"
+      ? (Number(entry.trade.price) - Number(entry.product.openingPrice)) * entry.trade.quantity
+      : (Number(entry.product.currentPrice) - Number(entry.trade.price)) * entry.trade.quantity;
+    return total + referenceProfit;
+  }, 0);
+  return {
+    wallet,
+    holdings: userHoldings,
+    activeOrders,
+    transactions: userTransactions,
+    tradeHistory,
+    profitSummary: { today: calculateProfit(startOfDay), week: calculateProfit(startOfWeek) },
+  };
 }
 
 export async function updateUserName(userId: number, name: string) {
