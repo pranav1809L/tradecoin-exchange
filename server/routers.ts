@@ -30,7 +30,7 @@ export const appRouter = router({
     overview: publicProcedure.query(() => getTrendingOverview()),
   }),
   people: router({
-    search: publicProcedure.input(z.object({ query: z.string().trim().min(1).max(40) })).query(({ input }) => searchProfiles(input.query)),
+    search: publicProcedure.input(z.object({ query: z.string().trim().min(1).max(40), exact: z.boolean().default(false) })).query(({ input }) => searchProfiles(input.query, input.exact)),
     profile: publicProcedure.input(z.object({ username: z.string().trim().min(1).max(40) })).query(({ input }) => getPublicProfile(input.username)),
   }),
   account: router({

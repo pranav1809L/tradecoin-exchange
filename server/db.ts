@@ -275,10 +275,12 @@ export async function updateUserProfile(userId: number, input: { username: strin
   return db.select().from(users).where(eq(users.id, userId)).limit(1).then((rows) => rows[0]);
 }
 
-export async function searchProfiles(query: string) {
+export async function searchProfiles(query: string, exact = false) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id, username: users.username, name: users.name, isPublic: users.isPublic }).from(users).where(or(like(users.username, `%${query}%`), like(users.name, `%${query}%`))).orderBy(asc(users.username)).limit(20);
+  const normalized = query.trim().toLowerCase();
+  const condition = exact ? eq(users.username, normalized) : or(like(users.username, `%${normalized}%`), like(users.name, `%${query.trim()}%`));
+  return db.select({ id: users.id, username: users.username, name: users.name, isPublic: users.isPublic }).from(users).where(condition).orderBy(asc(users.username)).limit(exact ? 1 : 20);
 }
 
 export async function getPublicProfile(username: string) {
