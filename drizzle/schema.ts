@@ -16,6 +16,8 @@ export const users = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     openId: varchar("openId", { length: 64 }).notNull().unique(),
     name: text("name"),
+    username: varchar("username", { length: 40 }).unique(),
+    isPublic: int("isPublic").default(0).notNull(),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
     role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
@@ -25,6 +27,7 @@ export const users = mysqlTable(
   },
   (table) => ({
     emailIdx: uniqueIndex("users_email_idx").on(table.email),
+    usernameIdx: uniqueIndex("users_username_idx").on(table.username),
   }),
 );
 

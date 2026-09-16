@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import AllOnlineTrades from "./pages/AllOnlineTrades";
 import Trending from "./pages/Trending";
+import SearchPeople from "./pages/SearchPeople";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -17,6 +18,7 @@ function Router() {
       <Route path={"/profile"} component={Profile} />
       <Route path={"/all-trades"} component={AllOnlineTrades} />
       <Route path={"/trending"} component={Trending} />
+      <Route path={"/search"} component={SearchPeople} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -4,7 +4,8 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { cancelOrder, placeLimitOrder } from "./trading";
-import { getAccountOverview, getMarket, getTrendingOverview, listAllTrades, listProducts, updateUserName } from "./db";
+import { getAccountOverview, getMarket, getPublicProfile, getTrendingOverview, listAllTrades, listProducts, searchProfiles, updateUserName, updateUserProfile } from "./db";
+import { isValidUsername } from "@shared/profile";
 
 const productInput = z.object({ productId: z.number().int().positive() });
 
@@ -28,9 +29,14 @@ export const appRouter = router({
   trending: router({
     overview: publicProcedure.query(() => getTrendingOverview()),
   }),
+  people: router({
+    search: publicProcedure.input(z.object({ query: z.string().trim().min(1).max(40) })).query(({ input }) => searchProfiles(input.query)),
+    profile: publicProcedure.input(z.object({ username: z.string().trim().min(1).max(40) })).query(({ input }) => getPublicProfile(input.username)),
+  }),
   account: router({
     overview: protectedProcedure.query(({ ctx }) => getAccountOverview(ctx.user.id)),
     updateName: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(80) })).mutation(({ ctx, input }) => updateUserName(ctx.user.id, input.name)),
+    updateProfile: protectedProcedure.input(z.object({ username: z.string().trim().refine(isValidUsername, "Username must be 3–40 letters, numbers, underscores, or hyphens"), isPublic: z.boolean() })).mutation(({ ctx, input }) => updateUserProfile(ctx.user.id, input)),
   }),
   orders: router({
     create: protectedProcedure.input(z.object({ productId: z.number().int().positive(), side: z.enum(["BUY", "SELL"]), price: z.string().optional(), quantity: z.number().int().positive() })).mutation(({ ctx, input }) => placeLimitOrder({ ...input, userId: ctx.user.id })),

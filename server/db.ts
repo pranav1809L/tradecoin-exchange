@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, not, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   holdings,
@@ -40,7 +40,7 @@ async function ensureBuiltInCatalog() {
     }
 
     const makerOpenId = "builtin-market-maker";
-    await db.insert(users).values({ openId: makerOpenId, name: "TradeCoin Market Maker", email: "market-maker@tradecoin.local", loginMethod: "system", role: "admin" }).onDuplicateKeyUpdate({ set: { name: "TradeCoin Market Maker" } });
+    await db.insert(users).values({ openId: makerOpenId, name: "TradeCoin Market Maker", username: "market-maker", email: "market-maker@tradecoin.local", loginMethod: "system", role: "admin", isPublic: 1 }).onDuplicateKeyUpdate({ set: { name: "TradeCoin Market Maker", username: "market-maker", isPublic: 1 } });
     const maker = await getUserByOpenId(makerOpenId);
     if (!maker) throw new Error("Built-in market maker could not be initialized");
     await db.insert(wallets).values({ userId: maker.id, balance: "100000000.00", lockedBalance: "0.00" }).onDuplicateKeyUpdate({ set: { userId: maker.id } });
@@ -105,6 +105,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
   const savedUser = await getUserByOpenId(user.openId);
   if (!savedUser) return;
+  if (!savedUser.username) {
+    await db.update(users).set({ username: `trader${savedUser.id}` }).where(eq(users.id, savedUser.id));
+  }
   const initialBalance = process.env.INITIAL_BALANCE ?? "100000.00";
   await db.insert(wallets).values({ userId: savedUser.id, balance: initialBalance, lockedBalance: "0.00" }).onDuplicateKeyUpdate({ set: { userId: savedUser.id } });
   const existingDeposit = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.userId, savedUser.id), eq(transactions.type, "DEPOSIT"))).limit(1);
@@ -260,4 +263,35 @@ export async function getTrendingOverview() {
   startOfDay.setHours(0, 0, 0, 0);
   const todayTrades = (await listAllTrades(250)).filter(({ trade }) => new Date(trade.executedAt) >= startOfDay).sort((a, b) => Number(b.trade.totalValue) - Number(a.trade.totalValue)).slice(0, 10);
   return { growingItems, bestTrades: todayTrades };
+}
+
+export async function updateUserProfile(userId: number, input: { username: string; isPublic: boolean }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const username = input.username.trim().toLowerCase();
+  const duplicate = await db.select({ id: users.id }).from(users).where(and(eq(users.username, username), not(eq(users.id, userId)))).limit(1);
+  if (duplicate.length > 0) throw new Error("That username is already taken. Try another name or generate a random username.");
+  await db.update(users).set({ username, isPublic: input.isPublic ? 1 : 0 }).where(eq(users.id, userId));
+  return db.select().from(users).where(eq(users.id, userId)).limit(1).then((rows) => rows[0]);
+}
+
+export async function searchProfiles(query: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: users.id, username: users.username, name: users.name, isPublic: users.isPublic }).from(users).where(or(like(users.username, `%${query}%`), like(users.name, `%${query}%`))).orderBy(asc(users.username)).limit(20);
+}
+
+export async function getPublicProfile(username: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const user = (await db.select({ id: users.id, username: users.username, name: users.name, isPublic: users.isPublic }).from(users).where(eq(users.username, username.trim().toLowerCase())).limit(1))[0];
+  if (!user) return null;
+  if (!user.isPublic) return { user, isPrivate: true, tradeHistory: [], profitSummary: { today: 0, week: 0 } };
+  const bought = await db.select({ trade: trades, product: products }).from(trades).innerJoin(products, eq(trades.productId, products.id)).where(eq(trades.buyerId, user.id)).orderBy(desc(trades.executedAt)).limit(100);
+  const sold = await db.select({ trade: trades, product: products }).from(trades).innerJoin(products, eq(trades.productId, products.id)).where(eq(trades.sellerId, user.id)).orderBy(desc(trades.executedAt)).limit(100);
+  const tradeHistory = [...bought.map(({ trade, product }) => ({ trade, product, side: "BUY" as const })), ...sold.map(({ trade, product }) => ({ trade, product, side: "SELL" as const }))].sort((a, b) => new Date(b.trade.executedAt).getTime() - new Date(a.trade.executedAt).getTime()).slice(0, 100);
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const profitSince = (since: Date) => tradeHistory.reduce((sum, entry) => new Date(entry.trade.executedAt) >= since ? sum + (entry.side === "SELL" ? (Number(entry.trade.price) - Number(entry.product.openingPrice)) * entry.trade.quantity : (Number(entry.product.currentPrice) - Number(entry.trade.price)) * entry.trade.quantity) : sum, 0);
+  return { user, isPrivate: false, tradeHistory, profitSummary: { today: profitSince(startOfDay), week: profitSince(startOfWeek) } };
 }
