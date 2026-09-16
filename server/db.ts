@@ -165,20 +165,20 @@ export async function getMarket(productId: number) {
   const product = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
   if (!product) return null;
   const activeStatuses = ["OPEN", "PARTIALLY_FILLED"] as const;
-  const [buyOrders, sellOrders, recentTrades, history] = await Promise.all([
-    db.select().from(orders).where(and(eq(orders.productId, productId), eq(orders.orderType, "BUY"), inArray(orders.status, activeStatuses))).orderBy(desc(orders.price), asc(orders.createdAt), asc(orders.id)).limit(12),
-    db.select().from(orders).where(and(eq(orders.productId, productId), eq(orders.orderType, "SELL"), inArray(orders.status, activeStatuses))).orderBy(asc(orders.price), asc(orders.createdAt), asc(orders.id)).limit(12),
+  const [buyRows, sellRows, recentTrades, history] = await Promise.all([
+    db.select({ order: orders, userName: users.name }).from(orders).innerJoin(users, eq(orders.userId, users.id)).where(and(eq(orders.productId, productId), eq(orders.orderType, "BUY"), inArray(orders.status, activeStatuses))).orderBy(desc(orders.price), asc(orders.createdAt), asc(orders.id)).limit(12),
+    db.select({ order: orders, userName: users.name }).from(orders).innerJoin(users, eq(orders.userId, users.id)).where(and(eq(orders.productId, productId), eq(orders.orderType, "SELL"), inArray(orders.status, activeStatuses))).orderBy(asc(orders.price), asc(orders.createdAt), asc(orders.id)).limit(12),
     db.select().from(trades).where(eq(trades.productId, productId)).orderBy(desc(trades.executedAt), desc(trades.id)).limit(12),
     db.select().from(priceHistory).where(eq(priceHistory.productId, productId)).orderBy(asc(priceHistory.recordedAt)).limit(180),
   ]);
   return {
     product,
-    buyOrders,
-    sellOrders,
+    buyOrders: buyRows.map(({ order, userName }) => ({ ...order, userName: userName ?? "Trader" })),
+    sellOrders: sellRows.map(({ order, userName }) => ({ ...order, userName: userName ?? "Trader" })),
     recentTrades,
     history,
-    bestBid: buyOrders[0]?.price ?? null,
-    bestAsk: sellOrders[0]?.price ?? null,
+    bestBid: buyRows[0]?.order.price ?? null,
+    bestAsk: sellRows[0]?.order.price ?? null,
   };
 }
 
