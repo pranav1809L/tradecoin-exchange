@@ -210,3 +210,21 @@ export async function updateUserName(userId: number, name: string) {
   await db.update(users).set({ name }).where(eq(users.id, userId));
   return db.select().from(users).where(eq(users.id, userId)).limit(1).then((rows) => rows[0]);
 }
+
+export async function listAllTrades(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ trade: trades, product: products }).from(trades).innerJoin(products, eq(trades.productId, products.id)).orderBy(desc(trades.executedAt), desc(trades.id)).limit(limit);
+  return Promise.all(rows.map(async ({ trade, product }) => {
+    const [buyer, seller] = await Promise.all([
+      db.select({ name: users.name }).from(users).where(eq(users.id, trade.buyerId)).limit(1),
+      db.select({ name: users.name }).from(users).where(eq(users.id, trade.sellerId)).limit(1),
+    ]);
+    return {
+      trade,
+      product,
+      buyerName: buyer[0]?.name ?? "Trader",
+      sellerName: seller[0]?.name ?? "Trader",
+    };
+  }));
+}

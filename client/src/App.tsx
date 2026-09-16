@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
+import AllOnlineTrades from "./pages/AllOnlineTrades";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -13,6 +14,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/profile"} component={Profile} />
+      <Route path={"/all-trades"} component={AllOnlineTrades} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
