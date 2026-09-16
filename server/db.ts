@@ -45,11 +45,13 @@ async function ensureBuiltInCatalog() {
     if (!maker) throw new Error("Built-in market maker could not be initialized");
     await db.insert(wallets).values({ userId: maker.id, balance: "100000000.00", lockedBalance: "0.00" }).onDuplicateKeyUpdate({ set: { userId: maker.id } });
 
-    const builtInProducts = await db.select().from(products).where(inArray(products.name, BUILT_IN_STOCKS.map(([stockName]) => stockName)));
+    const builtInProducts = await db.select().from(products);
     for (const product of builtInProducts) {
       const existingHolding = await db.select({ id: holdings.id }).from(holdings).where(and(eq(holdings.userId, maker.id), eq(holdings.productId, product.id))).limit(1);
       if (existingHolding.length === 0) {
         await db.insert(holdings).values({ userId: maker.id, productId: product.id, quantity: 10000, lockedQuantity: 1000, averageCost: product.currentPrice });
+      } else {
+        await db.update(holdings).set({ quantity: 10000, lockedQuantity: 1000, averageCost: product.currentPrice }).where(eq(holdings.id, existingHolding[0].id));
       }
       const existingSell = await db.select({ id: orders.id }).from(orders).where(and(eq(orders.userId, maker.id), eq(orders.productId, product.id), eq(orders.orderType, "SELL"), inArray(orders.status, ["OPEN", "PARTIALLY_FILLED"]))).limit(1);
       if (existingSell.length === 0) {
