@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import {
   Area,
@@ -122,6 +123,7 @@ function EmptyState({ title, message }: { title: string; message: string }) {
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
+  const { theme } = useTheme();
   const [activeNav, setActiveNav] = useState("Overview");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -233,7 +235,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071019] text-slate-100">
+    <div className={`site-shell exchange-shell theme-${theme} min-h-screen bg-[#071019] text-slate-100`}>
       <div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -left-40 -top-40 h-[540px] w-[540px] rounded-full bg-[#0d6e73]/15 blur-[130px]" /><div className="absolute right-[-180px] top-[30%] h-[480px] w-[480px] rounded-full bg-[#4c2e89]/12 blur-[140px]" /></div>
       <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#071019]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-[1480px] items-center gap-4 px-4 sm:px-6 lg:px-8">

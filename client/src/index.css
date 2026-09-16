@@ -43,3 +43,14 @@ button:active { transform: scale(.98); transition: transform 150ms var(--ease-ou
   .panel, .stat-card { animation: rise-in 420ms var(--ease-out) both; }
   @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 }
+
+/* Site-wide Profile theme surfaces. The selected theme is applied by ThemeProvider. */
+[data-site-theme="light"] .site-shell { background: #f4f7f8 !important; color: #0f172a !important; }
+[data-site-theme="light"] .site-shell header { background: rgba(255,255,255,.92) !important; border-color: #dbe4e8 !important; }
+[data-site-theme="light"] .site-shell .panel, [data-site-theme="light"] .site-shell .stat-card { background: #fff !important; border-color: #dbe4e8 !important; color: #0f172a !important; }
+[data-site-theme="glass"] .exchange-shell { background: radial-gradient(circle at top, #26496b, #0c1524 55%, #070b14) !important; }
+[data-site-theme="glass"] .exchange-shell .panel, [data-site-theme="glass"] .exchange-shell .stat-card { background: rgba(255,255,255,.10) !important; border-color: rgba(255,255,255,.20) !important; backdrop-filter: blur(18px); }
+[data-site-theme="fintech"] .exchange-shell { background: #06151b !important; }
+[data-site-theme="fintech"] .exchange-shell .panel, [data-site-theme="fintech"] .exchange-shell .stat-card { background: #0a222b !important; border-color: rgba(34,211,238,.25) !important; }
+[data-site-theme="cyberpunk"] .exchange-shell { background: radial-gradient(circle at top right, #42136c, #15071f 50%, #090510) !important; }
+[data-site-theme="cyberpunk"] .exchange-shell .panel, [data-site-theme="cyberpunk"] .exchange-shell .stat-card { background: #1a0d2a !important; border-color: rgba(217,70,239,.30) !important; }

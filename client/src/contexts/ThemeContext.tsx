@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+export type SiteTheme = "dark" | "glass" | "light" | "fintech" | "cyberpunk";
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: SiteTheme;
+  setTheme: (theme: SiteTheme) => void;
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -12,7 +13,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
   children: React.ReactNode;
-  defaultTheme?: Theme;
+  defaultTheme?: SiteTheme;
   switchable?: boolean;
 }
 
@@ -21,35 +22,26 @@ export function ThemeProvider({
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setTheme] = useState<SiteTheme>(() => {
     if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      const stored = localStorage.getItem("tradecoin-site-theme");
+      return (stored as SiteTheme) || defaultTheme;
     }
     return defaultTheme;
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    root.dataset.siteTheme = theme;
+    root.classList.toggle("dark", theme !== "light");
 
     if (switchable) {
-      localStorage.setItem("theme", theme);
+      localStorage.setItem("tradecoin-site-theme", theme);
     }
   }, [theme, switchable]);
 
-  const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
-    : undefined;
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme: () => setTheme(prev => prev === "light" ? "dark" : "light"), switchable }}>
       {children}
     </ThemeContext.Provider>
   );
