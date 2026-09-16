@@ -25,6 +25,7 @@ import {
   Clock3,
   Compass,
   Globe2,
+  Flame,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { label: "Orders", icon: BookOpen },
   { label: "Profile", icon: UserRound },
   { label: "All Online Trades", icon: Globe2 },
+  { label: "Trending", icon: Flame },
 ];
 
 type Product = {
@@ -244,7 +246,8 @@ export default function Home() {
           <button onClick={() => setMobileNavOpen((open) => !open)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-slate-300 lg:hidden"><Menu size={18} /></button>
           <div className="flex items-center gap-3 pr-4 lg:border-r lg:border-white/10"><div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#66e0bd] to-[#1ca4a7] text-[#062a2b] shadow-[0_0_32px_rgba(85,219,184,.18)]"><Zap size={20} fill="currentColor" /></div><div><div className="text-[17px] font-bold tracking-tight">trade<span className="text-[#68e0c0]">coin</span></div><div className="hidden text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500 sm:block">simulated exchange</div></div></div>
           <nav className="hidden items-center gap-1 lg:flex">{NAV_ITEMS.map((item) => <button key={item.label} onClick={() => { if (item.label === "Profile") { window.location.href = "/profile"; return; }
-              if (item.label === "All Online Trades") { window.location.href = "/all-trades"; return; } setActiveNav(item.label); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${activeNav === item.label ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>{item.label}</button>)}</nav>
+              if (item.label === "All Online Trades") { window.location.href = "/all-trades"; return; } if (item.label === "Trending") { window.location.href = "/trending"; return; }
+              if (item.label === "Trending") { window.location.href = "/trending"; return; } setActiveNav(item.label); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${activeNav === item.label ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>{item.label}</button>)}</nav>
           <div className="ml-auto flex items-center gap-3"><div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-400 md:flex"><CircleDollarSign size={14} className="text-[#68e0c0]" /> <span className="font-mono">{money(wallet?.balance ?? "100000")}</span></div>{authLoading ? <div className="h-9 w-24 animate-pulse rounded-xl bg-white/[0.06]" /> : isAuthenticated ? <div className="flex items-center gap-2"><button onClick={async () => { await logout(); startLogin(); }} className="rounded-xl border border-[#69ddbd]/30 px-3 py-2 text-xs font-semibold text-[#8ceacd] transition hover:bg-[#69ddbd]/10">Switch account</button><button onClick={() => logout()} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#d2a26f] text-[9px] font-black text-[#2c1b12]">{displayName.charAt(0).toUpperCase()}</span><span className="hidden sm:block">{displayName}</span><LogOut size={13} /></button></div> : <button onClick={() => startLogin()} className="rounded-xl bg-[#69ddbd] px-4 py-2.5 text-xs font-bold text-[#062a2b] transition hover:bg-[#8ceacd]">Sign in</button>}</div>
         </div>
       </header>

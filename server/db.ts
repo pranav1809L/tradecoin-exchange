@@ -228,3 +228,17 @@ export async function listAllTrades(limit = 100) {
     };
   }));
 }
+
+export async function getTrendingOverview() {
+  const db = await getDb();
+  if (!db) return { growingItems: [], bestTrades: [] };
+  const productRows = await db.select().from(products);
+  const growingItems = productRows
+    .map((product) => ({ product, growthPercent: Number(product.openingPrice) > 0 ? ((Number(product.currentPrice) - Number(product.openingPrice)) / Number(product.openingPrice)) * 100 : 0 }))
+    .sort((a, b) => b.growthPercent - a.growthPercent)
+    .slice(0, 10);
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const todayTrades = (await listAllTrades(250)).filter(({ trade }) => new Date(trade.executedAt) >= startOfDay).sort((a, b) => Number(b.trade.totalValue) - Number(a.trade.totalValue)).slice(0, 10);
+  return { growingItems, bestTrades: todayTrades };
+}

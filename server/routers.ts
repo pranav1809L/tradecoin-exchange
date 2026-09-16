@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { cancelOrder, placeLimitOrder } from "./trading";
-import { getAccountOverview, getMarket, listAllTrades, listProducts, updateUserName } from "./db";
+import { getAccountOverview, getMarket, getTrendingOverview, listAllTrades, listProducts, updateUserName } from "./db";
 
 const productInput = z.object({ productId: z.number().int().positive() });
 
@@ -24,6 +24,9 @@ export const appRouter = router({
   }),
   allTrades: router({
     list: publicProcedure.query(() => listAllTrades(100)),
+  }),
+  trending: router({
+    overview: publicProcedure.query(() => getTrendingOverview()),
   }),
   account: router({
     overview: protectedProcedure.query(({ ctx }) => getAccountOverview(ctx.user.id)),
