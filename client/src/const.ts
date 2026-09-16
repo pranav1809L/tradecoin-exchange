@@ -26,9 +26,9 @@ export const startLogin = () => {
   url.searchParams.set("redirectUri", redirectUri);
   url.searchParams.set("state", state);
   url.searchParams.set("type", "signIn");
-  // Ask the upstream Google/Manus login flow to show account selection instead
-  // of silently reusing the currently active Gmail session.
-  url.searchParams.set("prompt", "select_account");
+  // Force a fresh upstream login and account chooser instead of silently
+  // reusing the currently active Gmail/Manus session.
+  url.searchParams.set("prompt", "login select_account");
 
   window.location.href = url.toString();
 };
