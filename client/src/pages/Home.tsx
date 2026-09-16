@@ -35,6 +35,7 @@ import {
   TrendingUp,
   WalletCards,
   X,
+  UserRound,
   Zap,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { label: "Discover", icon: Compass },
   { label: "My portfolio", icon: BriefcaseBusiness },
   { label: "Orders", icon: BookOpen },
+  { label: "Profile", icon: UserRound },
 ];
 
 type Product = {
@@ -129,6 +131,7 @@ export default function Home() {
   const [quantity, setQuantity] = useState("1");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
+  const [profileName, setProfileName] = useState("");
 
   const productInput = useMemo(() => ({ query: search || undefined, category: category === "All" ? undefined : category, limit: 100 }), [search, category]);
   const productsQuery = trpc.markets.products.useQuery(productInput);
@@ -141,6 +144,7 @@ export default function Home() {
   const accountQuery = trpc.account.overview.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: 15_000 });
   const createOrder = trpc.orders.create.useMutation();
   const cancelOrder = trpc.orders.cancel.useMutation();
+  const updateName = trpc.account.updateName.useMutation();
   const utils = trpc.useUtils();
 
   const chartData = (market?.history ?? []).map((point) => ({ date: new Date(point.recordedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }), price: Number(point.price), volume: point.volume }));
@@ -153,6 +157,11 @@ export default function Home() {
   const availableToSell = selectedHolding ? selectedHolding.holding.quantity - selectedHolding.holding.lockedQuantity : 0;
   const displayName = user?.name?.split(" ")[0] ?? "Trader";
   const portfolioPnl = holdings.reduce((sum, row) => sum + (Number(row.product.currentPrice) - Number(row.holding.averageCost)) * row.holding.quantity, 0);
+  const tradeHistory = accountQuery.data?.tradeHistory ?? [];
+
+  useEffect(() => {
+    if (user?.name && !profileName) setProfileName(user.name);
+  }, [user?.name, profileName]);
 
   useEffect(() => {
     if (selected?.currentPrice && (!price || Number(price) <= 0)) {
@@ -203,6 +212,16 @@ export default function Home() {
     }
   }
 
+  async function saveProfileName() {
+    const name = profileName.trim();
+    if (name.length < 2) { toast.error("Name must be at least 2 characters."); return; }
+    try {
+      await updateName.mutateAsync({ name });
+      await utils.auth.me.invalidate();
+      toast.success("Profile name updated");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update profile"); }
+  }
+
   async function handleCancel(orderId: number) {
     try {
       await cancelOrder.mutateAsync({ orderId });
@@ -220,14 +239,14 @@ export default function Home() {
         <div className="mx-auto flex h-[76px] max-w-[1480px] items-center gap-4 px-4 sm:px-6 lg:px-8">
           <button onClick={() => setMobileNavOpen((open) => !open)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-slate-300 lg:hidden"><Menu size={18} /></button>
           <div className="flex items-center gap-3 pr-4 lg:border-r lg:border-white/10"><div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#66e0bd] to-[#1ca4a7] text-[#062a2b] shadow-[0_0_32px_rgba(85,219,184,.18)]"><Zap size={20} fill="currentColor" /></div><div><div className="text-[17px] font-bold tracking-tight">trade<span className="text-[#68e0c0]">coin</span></div><div className="hidden text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500 sm:block">simulated exchange</div></div></div>
-          <nav className="hidden items-center gap-1 lg:flex">{NAV_ITEMS.map((item) => <button key={item.label} onClick={() => { setActiveNav(item.label); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${activeNav === item.label ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>{item.label}</button>)}</nav>
+          <nav className="hidden items-center gap-1 lg:flex">{NAV_ITEMS.map((item) => <button key={item.label} onClick={() => { setActiveNav(item.label); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : item.label === "Profile" ? "profile" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${activeNav === item.label ? "bg-white/[0.08] text-white" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"}`}>{item.label}</button>)}</nav>
           <div className="ml-auto flex items-center gap-3"><div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-400 md:flex"><CircleDollarSign size={14} className="text-[#68e0c0]" /> <span className="font-mono">{money(wallet?.balance ?? "100000")}</span></div>{authLoading ? <div className="h-9 w-24 animate-pulse rounded-xl bg-white/[0.06]" /> : isAuthenticated ? <div className="flex items-center gap-2"><button onClick={async () => { await logout(); startLogin(); }} className="rounded-xl border border-[#69ddbd]/30 px-3 py-2 text-xs font-semibold text-[#8ceacd] transition hover:bg-[#69ddbd]/10">Switch account</button><button onClick={() => logout()} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:text-white"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#d2a26f] text-[9px] font-black text-[#2c1b12]">{displayName.charAt(0).toUpperCase()}</span><span className="hidden sm:block">{displayName}</span><LogOut size={13} /></button></div> : <button onClick={() => startLogin()} className="rounded-xl bg-[#69ddbd] px-4 py-2.5 text-xs font-bold text-[#062a2b] transition hover:bg-[#8ceacd]">Sign in</button>}</div>
         </div>
       </header>
 
       <div className="relative mx-auto flex max-w-[1480px]">
         <aside className={`${mobileNavOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-[77px] left-0 z-30 w-64 border-r border-white/[0.07] bg-[#08131d] p-4 transition-transform lg:sticky lg:top-[77px] lg:block lg:h-[calc(100vh-77px)] lg:w-60 lg:translate-x-0 lg:bg-transparent`}>
-          <div className="flex h-full flex-col"><div className="mb-6 flex items-center justify-between lg:hidden"><span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Navigation</span><button onClick={() => setMobileNavOpen(false)}><X size={18} /></button></div><div className="space-y-1">{NAV_ITEMS.map((item) => { const Icon = item.icon; return <button key={item.label} onClick={() => { setActiveNav(item.label); setMobileNavOpen(false); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${activeNav === item.label ? "bg-[#143235] text-[#76e4c4]" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"}`}><Icon size={17} /><span>{item.label}</span>{item.label === "Orders" && activeOrders.length > 0 && <span className="ml-auto rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">{activeOrders.length}</span>}</button>; })}</div><div className="mt-auto hidden rounded-2xl border border-[#2b5c5c]/40 bg-gradient-to-br from-[#102c31] to-[#101e2b] p-4 lg:block"><div className="mb-3 flex items-center justify-between"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#69ddbd]/15 text-[#69ddbd]"><ShieldCheck size={16} /></span><Badge tone="green">Virtual only</Badge></div><p className="text-sm font-semibold text-slate-100">Trade without the noise.</p><p className="mt-1 text-xs leading-5 text-slate-400">Practice with simulated prices and zero real-money payments.</p><div className="mt-4 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#69ddbd]"><Sparkles size={12} /> Learn the market</div></div></div>
+          <div className="flex h-full flex-col"><div className="mb-6 flex items-center justify-between lg:hidden"><span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Navigation</span><button onClick={() => setMobileNavOpen(false)}><X size={18} /></button></div><div className="space-y-1">{NAV_ITEMS.map((item) => { const Icon = item.icon; return <button key={item.label} onClick={() => { setActiveNav(item.label); setMobileNavOpen(false); document.getElementById(item.label === "Discover" ? "market-discovery" : item.label === "My portfolio" ? "portfolio" : item.label === "Orders" ? "open-orders" : item.label === "Profile" ? "profile" : "top-overview")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${activeNav === item.label ? "bg-[#143235] text-[#76e4c4]" : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"}`}><Icon size={17} /><span>{item.label}</span>{item.label === "Orders" && activeOrders.length > 0 && <span className="ml-auto rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-slate-300">{activeOrders.length}</span>}</button>; })}</div><div className="mt-auto hidden rounded-2xl border border-[#2b5c5c]/40 bg-gradient-to-br from-[#102c31] to-[#101e2b] p-4 lg:block"><div className="mb-3 flex items-center justify-between"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#69ddbd]/15 text-[#69ddbd]"><ShieldCheck size={16} /></span><Badge tone="green">Virtual only</Badge></div><p className="text-sm font-semibold text-slate-100">Trade without the noise.</p><p className="mt-1 text-xs leading-5 text-slate-400">Practice with simulated prices and zero real-money payments.</p><div className="mt-4 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#69ddbd]"><Sparkles size={12} /> Learn the market</div></div></div>
         </aside>
 
         <main id="top-overview" className="min-w-0 flex-1 px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
@@ -252,6 +271,8 @@ export default function Home() {
 
             <section id="open-orders" className="panel scroll-mt-24"><div className="flex items-center justify-between border-b border-white/[0.07] pb-4"><div><h2 className="section-title">Open orders</h2><p className="mt-1 text-xs text-slate-500">Cancel anytime · reservations release automatically</p></div><Badge tone="slate">{activeOrders.length} active</Badge></div><div className="mt-4 space-y-2">{!isAuthenticated ? <EmptyState title="Sign in to manage orders" message="Your open orders and transaction history will appear here." /> : activeOrders.length === 0 ? <EmptyState title="You don't have any active orders" message="Place a limit order to start participating in the market." /> : activeOrders.slice(0, 6).map((row) => <div key={row.order.id} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"><div className={`grid h-8 w-8 place-items-center rounded-lg ${row.order.orderType === "BUY" ? "bg-emerald-400/10 text-emerald-300" : "bg-rose-400/10 text-rose-300"}`}>{row.order.orderType === "BUY" ? <ArrowDownRight size={15} /> : <ArrowUpRight size={15} />}</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold text-slate-200">{row.product.name.replace("Seed • ", "")}</div><div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-600">{row.order.orderType} · {row.order.status}</div></div><div className="text-right"><div className="font-mono text-xs text-slate-200">{shortMoney(row.order.price)} TC</div><div className="mt-1 text-[10px] text-slate-500">{row.order.remainingQuantity} remaining</div></div><button disabled={cancelOrder.isPending} onClick={() => void handleCancel(row.order.id)} className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 text-slate-500 transition hover:border-rose-400/30 hover:text-rose-300"><X size={13} /></button></div>)}</div></section>
           </div>
+
+          <section id="profile" className="panel mt-6 scroll-mt-24"><div className="flex items-start justify-between gap-3 border-b border-white/[0.07] pb-5"><div><h2 className="section-title">Profile</h2><p className="mt-1 text-xs text-slate-500">Manage your display name and review completed trades.</p></div><UserRound size={18} className="text-[#69ddbd]" /></div>{!isAuthenticated ? <div className="mt-5"><EmptyState title="Sign in to view your profile" message="Your profile and completed trade history are private to your account." /></div> : <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(260px,.7fr)_minmax(0,1.3fr)]"><div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Account details</div><div className="mt-4 text-xs text-slate-500">Email</div><div className="mt-1 truncate text-sm text-slate-200">{user?.email ?? "Connected account"}</div><label className="mt-4 block"><span className="text-xs text-slate-500">Display name</span><input value={profileName} onChange={(event) => setProfileName(event.target.value)} className="field-input mt-2" maxLength={80} /></label><button onClick={() => void saveProfileName()} disabled={updateName.isPending} className="mt-3 rounded-lg bg-[#69ddbd] px-3 py-2 text-xs font-bold text-[#062a2b] disabled:opacity-60">{updateName.isPending ? "Saving…" : "Save name"}</button></div><div><div className="mb-3 flex items-center justify-between"><div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Completed trades</div><Badge tone="slate">{tradeHistory.length}</Badge></div>{tradeHistory.length === 0 ? <EmptyState title="No completed trades yet" message="Matched trades will appear here with a profitability indicator." /> : <div className="space-y-2">{tradeHistory.map(({ trade, product, side: tradeSide }) => { const referencePnl = tradeSide === "SELL" ? (Number(trade.price) - Number(product.openingPrice)) * trade.quantity : (Number(product.currentPrice) - Number(trade.price)) * trade.quantity; const profitable = referencePnl >= 0; return <div key={`${trade.id}-${tradeSide}`} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"><div className={`grid h-8 w-8 place-items-center rounded-lg ${tradeSide === "BUY" ? "bg-emerald-400/10 text-emerald-300" : "bg-rose-400/10 text-rose-300"}`}>{tradeSide === "BUY" ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold text-slate-200">{product.name.replace("Seed • ", "")}</div><div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate-600">{tradeSide} · {trade.quantity} units · {new Date(trade.executedAt).toLocaleString()}</div></div><div className="text-right"><div className="font-mono text-xs text-slate-200">{money(trade.totalValue)}</div><div className={`mt-1 text-[10px] font-semibold ${profitable ? "text-emerald-300" : "text-rose-300"}`}>{profitable ? "+" : ""}{money(Math.abs(referencePnl))} {profitable ? "profitable" : "loss"}</div></div></div>; })}</div>}</div></div>}</section>
 
           <footer className="mt-10 flex flex-col justify-between gap-3 border-t border-white/[0.07] py-6 text-[10px] uppercase tracking-[0.14em] text-slate-600 sm:flex-row"><span>TradeCoin Exchange · Virtual economy only</span><span className="flex items-center gap-2"><ShieldCheck size={12} /> No real-money payments · Backend source of truth</span></footer>
         </main>

@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { cancelOrder, placeLimitOrder } from "./trading";
-import { getAccountOverview, getMarket, listProducts } from "./db";
+import { getAccountOverview, getMarket, listProducts, updateUserName } from "./db";
 
 const productInput = z.object({ productId: z.number().int().positive() });
 
@@ -24,6 +24,7 @@ export const appRouter = router({
   }),
   account: router({
     overview: protectedProcedure.query(({ ctx }) => getAccountOverview(ctx.user.id)),
+    updateName: protectedProcedure.input(z.object({ name: z.string().trim().min(2).max(80) })).mutation(({ ctx, input }) => updateUserName(ctx.user.id, input.name)),
   }),
   orders: router({
     create: protectedProcedure.input(z.object({ productId: z.number().int().positive(), side: z.enum(["BUY", "SELL"]), price: z.string().optional(), quantity: z.number().int().positive() })).mutation(({ ctx, input }) => placeLimitOrder({ ...input, userId: ctx.user.id })),

@@ -195,5 +195,18 @@ export async function getAccountOverview(userId: number) {
   const userHoldings = await db.select({ holding: holdings, product: products }).from(holdings).innerJoin(products, eq(holdings.productId, products.id)).where(eq(holdings.userId, userId)).orderBy(desc(holdings.quantity));
   const activeOrders = await db.select({ order: orders, product: products }).from(orders).innerJoin(products, eq(orders.productId, products.id)).where(and(eq(orders.userId, userId), inArray(orders.status, ["OPEN", "PARTIALLY_FILLED"]))).orderBy(desc(orders.createdAt)).limit(30);
   const userTransactions = await db.select({ transaction: transactions, product: products }).from(transactions).leftJoin(products, eq(transactions.productId, products.id)).where(eq(transactions.userId, userId)).orderBy(desc(transactions.createdAt), desc(transactions.id)).limit(30);
-  return { wallet, holdings: userHoldings, activeOrders, transactions: userTransactions };
+  const boughtTrades = await db.select({ trade: trades, product: products }).from(trades).innerJoin(products, eq(trades.productId, products.id)).where(eq(trades.buyerId, userId)).orderBy(desc(trades.executedAt), desc(trades.id)).limit(50);
+  const soldTrades = await db.select({ trade: trades, product: products }).from(trades).innerJoin(products, eq(trades.productId, products.id)).where(eq(trades.sellerId, userId)).orderBy(desc(trades.executedAt), desc(trades.id)).limit(50);
+  const tradeHistory = [
+    ...boughtTrades.map(({ trade, product }) => ({ trade, product, side: "BUY" as const })),
+    ...soldTrades.map(({ trade, product }) => ({ trade, product, side: "SELL" as const })),
+  ].sort((a, b) => new Date(b.trade.executedAt).getTime() - new Date(a.trade.executedAt).getTime()).slice(0, 50);
+  return { wallet, holdings: userHoldings, activeOrders, transactions: userTransactions, tradeHistory };
+}
+
+export async function updateUserName(userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.update(users).set({ name }).where(eq(users.id, userId));
+  return db.select().from(users).where(eq(users.id, userId)).limit(1).then((rows) => rows[0]);
 }
