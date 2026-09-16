@@ -34,8 +34,27 @@ async function ensureBuiltInCatalog() {
   builtInCatalogPromise = (async () => {
     for (const [name, category, description, price] of BUILT_IN_STOCKS) {
       const existing = await db.select({ id: products.id }).from(products).where(eq(products.name, name)).limit(1);
-      if (existing.length > 0) continue;
-      await db.insert(products).values({ name, category, description, imageUrl: "builtin://tradecoin-stock", currentPrice: price, previousPrice: price, openingPrice: price, highPrice: price, lowPrice: price, volume: 0 });
+      if (existing.length === 0) {
+        await db.insert(products).values({ name, category, description, imageUrl: "builtin://tradecoin-stock", currentPrice: price, previousPrice: price, openingPrice: price, highPrice: price, lowPrice: price, volume: 0 });
+      }
+    }
+
+    const makerOpenId = "builtin-market-maker";
+    await db.insert(users).values({ openId: makerOpenId, name: "TradeCoin Market Maker", email: "market-maker@tradecoin.local", loginMethod: "system", role: "admin" }).onDuplicateKeyUpdate({ set: { name: "TradeCoin Market Maker" } });
+    const maker = await getUserByOpenId(makerOpenId);
+    if (!maker) throw new Error("Built-in market maker could not be initialized");
+    await db.insert(wallets).values({ userId: maker.id, balance: "100000000.00", lockedBalance: "0.00" }).onDuplicateKeyUpdate({ set: { userId: maker.id } });
+
+    const builtInProducts = await db.select().from(products).where(inArray(products.name, BUILT_IN_STOCKS.map(([stockName]) => stockName)));
+    for (const product of builtInProducts) {
+      const existingHolding = await db.select({ id: holdings.id }).from(holdings).where(and(eq(holdings.userId, maker.id), eq(holdings.productId, product.id))).limit(1);
+      if (existingHolding.length === 0) {
+        await db.insert(holdings).values({ userId: maker.id, productId: product.id, quantity: 10000, lockedQuantity: 1000, averageCost: product.currentPrice });
+      }
+      const existingSell = await db.select({ id: orders.id }).from(orders).where(and(eq(orders.userId, maker.id), eq(orders.productId, product.id), eq(orders.orderType, "SELL"), inArray(orders.status, ["OPEN", "PARTIALLY_FILLED"]))).limit(1);
+      if (existingSell.length === 0) {
+        await db.insert(orders).values({ userId: maker.id, productId: product.id, orderType: "SELL", price: product.currentPrice, quantity: 1000, filledQuantity: 0, remainingQuantity: 1000, status: "OPEN" });
+      }
     }
   })().catch((error) => {
     builtInCatalogPromise = null;
