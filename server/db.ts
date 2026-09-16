@@ -14,6 +14,36 @@ import {
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let builtInCatalogPromise: Promise<void> | null = null;
+
+const BUILT_IN_STOCKS = [
+  ["Atlas Mobility", "Automotive", "Electric mobility and charging infrastructure", "125.00"],
+  ["Nova Compute", "Technology", "Cloud compute, chips, and developer infrastructure", "210.00"],
+  ["BrightGrid Energy", "Energy", "Renewable power generation and storage", "84.50"],
+  ["Harbor Health", "Healthcare", "Digital health tools and preventive care", "156.75"],
+  ["Pioneer Foods", "Consumer", "Everyday food and sustainable agriculture", "72.25"],
+  ["Orbit Communications", "Technology", "Satellite connectivity and communications", "98.00"],
+  ["Cedar Financial", "Finance", "Modern payments and financial services", "132.40"],
+  ["Vista Retail", "Consumer", "Omnichannel commerce and fulfillment", "64.80"],
+] as const;
+
+async function ensureBuiltInCatalog() {
+  if (builtInCatalogPromise) return builtInCatalogPromise;
+  const db = await getDb();
+  if (!db) return;
+  builtInCatalogPromise = (async () => {
+    for (const [name, category, description, price] of BUILT_IN_STOCKS) {
+      const existing = await db.select({ id: products.id }).from(products).where(eq(products.name, name)).limit(1);
+      if (existing.length > 0) continue;
+      await db.insert(products).values({ name, category, description, imageUrl: "builtin://tradecoin-stock", currentPrice: price, previousPrice: price, openingPrice: price, highPrice: price, lowPrice: price, volume: 0 });
+    }
+  })().catch((error) => {
+    builtInCatalogPromise = null;
+    console.error("[Catalog] Failed to initialize built-in stocks:", error);
+    throw error;
+  });
+  return builtInCatalogPromise;
+}
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -31,6 +61,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
+  await ensureBuiltInCatalog();
 
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
@@ -90,6 +121,7 @@ async function ensureStarterInventory(userId: number) {
 export async function listProducts(input: { query?: string; category?: string; limit: number }) {
   const db = await getDb();
   if (!db) return [];
+  await ensureBuiltInCatalog();
   const filters = [];
   if (input.category && input.category !== "All") filters.push(eq(products.category, input.category));
   if (input.query?.trim()) {
