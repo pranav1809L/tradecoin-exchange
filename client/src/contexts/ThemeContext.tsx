@@ -5,6 +5,9 @@ export type SiteTheme = "dark" | "glass" | "light" | "fintech" | "cyberpunk";
 interface ThemeContextType {
   theme: SiteTheme;
   setTheme: (theme: SiteTheme) => void;
+  setPreviewTheme: (theme: SiteTheme | null) => void;
+  confirmTheme: () => void;
+  isPreviewing: boolean;
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -22,26 +25,41 @@ export function ThemeProvider({
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<SiteTheme>(() => {
+  const [confirmedTheme, setConfirmedTheme] = useState<SiteTheme>(() => {
     if (switchable) {
       const stored = localStorage.getItem("tradecoin-site-theme");
       return (stored as SiteTheme) || defaultTheme;
     }
     return defaultTheme;
   });
+  const [previewTheme, setPreviewTheme] = useState<SiteTheme | null>(null);
+  const theme = previewTheme ?? confirmedTheme;
 
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.siteTheme = theme;
     root.classList.toggle("dark", theme !== "light");
 
-    if (switchable) {
-      localStorage.setItem("tradecoin-site-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (switchable) localStorage.setItem("tradecoin-site-theme", confirmedTheme);
+  }, [confirmedTheme, switchable]);
+
+  const setTheme = (nextTheme: SiteTheme) => {
+    setConfirmedTheme(nextTheme);
+    setPreviewTheme(null);
+  };
+
+  const confirmTheme = () => {
+    if (previewTheme) {
+      setConfirmedTheme(previewTheme);
+      setPreviewTheme(null);
     }
-  }, [theme, switchable]);
+  };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme: () => setTheme(prev => prev === "light" ? "dark" : "light"), switchable }}>
+    <ThemeContext.Provider value={{ theme, setTheme, setPreviewTheme, confirmTheme, isPreviewing: Boolean(previewTheme), toggleTheme: () => setTheme(theme === "light" ? "dark" : "light"), switchable }}>
       {children}
     </ThemeContext.Provider>
   );
