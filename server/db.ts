@@ -26,6 +26,7 @@ const BUILT_IN_STOCKS = [
   ["Cedar Financial", "Finance", "Modern payments and financial services", "132.40"],
   ["Vista Retail", "Consumer", "Omnichannel commerce and fulfillment", "64.80"],
 ] as const;
+const ADMIN_EMAIL = "pranavvarmaonline@gmail.com";
 
 async function ensureBuiltInCatalog() {
   if (builtInCatalogPromise) return builtInCatalogPromise;
@@ -98,7 +99,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (user.role) {
     values.role = user.role;
     updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
+  } else if (user.openId === ENV.ownerOpenId || user.email?.toLowerCase() === ADMIN_EMAIL) {
     values.role = "admin";
     updateSet.role = "admin";
   }
@@ -296,4 +297,47 @@ export async function getPublicProfile(username: string) {
   const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
   const profitSince = (since: Date) => tradeHistory.reduce((sum, entry) => new Date(entry.trade.executedAt) >= since ? sum + (entry.side === "SELL" ? (Number(entry.trade.price) - Number(entry.product.openingPrice)) * entry.trade.quantity : (Number(entry.product.currentPrice) - Number(entry.trade.price)) * entry.trade.quantity) : sum, 0);
   return { user, isPrivate: false, tradeHistory, profitSummary: { today: profitSince(startOfDay), week: profitSince(startOfWeek) } };
+}
+
+
+export function isAdministrator(user: { role?: string | null; email?: string | null }) {
+  return user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL;
+}
+
+export async function listAdminProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  await ensureBuiltInCatalog();
+  return db.select().from(products).orderBy(asc(products.name));
+}
+
+export async function createAdminProduct(input: { name: string; category: string; description: string; price: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || price <= 0) throw new Error("Price must be greater than zero");
+  const normalizedPrice = price.toFixed(2);
+  const result = await db.insert(products).values({ name: input.name.trim(), category: input.category.trim(), description: input.description.trim(), imageUrl: "builtin://admin-stock", currentPrice: normalizedPrice, previousPrice: normalizedPrice, openingPrice: normalizedPrice, highPrice: normalizedPrice, lowPrice: normalizedPrice, volume: 0 });
+  return db.select().from(products).where(eq(products.id, result[0].insertId)).limit(1).then((rows) => rows[0]);
+}
+
+export async function updateAdminProductPrice(productId: number, priceInput: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const price = Number(priceInput);
+  if (!Number.isFinite(price) || price <= 0) throw new Error("Price must be greater than zero");
+  const product = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
+  if (!product) throw new Error("Product not found");
+  const normalizedPrice = price.toFixed(2);
+  await db.update(products).set({ previousPrice: product.currentPrice, currentPrice: normalizedPrice, highPrice: Number(product.highPrice) > price ? product.highPrice : normalizedPrice, lowPrice: Number(product.lowPrice) < price ? product.lowPrice : normalizedPrice }).where(eq(products.id, productId));
+  return db.select().from(products).where(eq(products.id, productId)).limit(1).then((rows) => rows[0]);
+}
+
+export async function deleteAdminProduct(productId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const product = (await db.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1))[0];
+  if (!product) throw new Error("Product not found");
+  await db.delete(products).where(eq(products.id, productId));
+  return { success: true as const };
 }
