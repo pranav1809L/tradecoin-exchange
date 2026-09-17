@@ -26,6 +26,9 @@ button:active { transform: scale(.98); transition: transform 150ms var(--ease-ou
   .section-title { @apply text-sm font-bold tracking-[-0.01em] text-slate-100; }
   .field-label { @apply text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500; }
   .field-input { @apply h-11 w-full rounded-xl border border-white/[0.09] bg-white/[0.035] px-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-[#5dd8b8]/50 focus:bg-white/[0.05] focus:ring-2 focus:ring-[#5dd8b8]/10; }
+  .detail-cell { @apply rounded-xl bg-white/[0.03] p-3; }
+  .detail-cell span { @apply block text-[10px] uppercase tracking-wider text-slate-500; }
+  .detail-cell strong { @apply mt-1 block text-sm font-semibold text-slate-200; }
   .field-suffix { @apply pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500; }
   .book-row { @apply relative flex items-center justify-between overflow-hidden rounded-lg border px-3 py-2 text-xs transition; }
   .book-row::before { content: ""; @apply absolute inset-y-0 left-0 w-1/2 opacity-0 transition-opacity; }
