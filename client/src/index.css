@@ -57,3 +57,22 @@ button:active { transform: scale(.98); transition: transform 150ms var(--ease-ou
 [data-site-theme="fintech"] .exchange-shell .panel, [data-site-theme="fintech"] .exchange-shell .stat-card { background: #0a222b !important; border-color: rgba(34,211,238,.25) !important; }
 [data-site-theme="cyberpunk"] .exchange-shell { background: radial-gradient(circle at top right, #42136c, #15071f 50%, #090510) !important; }
 [data-site-theme="cyberpunk"] .exchange-shell .panel, [data-site-theme="cyberpunk"] .exchange-shell .stat-card { background: #1a0d2a !important; border-color: rgba(217,70,239,.30) !important; }
+
+/* Accessibility: lift muted text out of the low-contrast range across every theme. */
+body { color: #dbe7ee; }
+.text-slate-400 { color: #b7c7d2 !important; }
+.text-slate-500 { color: #91a6b5 !important; }
+.text-slate-600 { color: #78909f !important; }
+input::placeholder, textarea::placeholder { color: #78909f !important; opacity: 1; }
+
+/* Light / Minimal theme uses dark muted text on its white surfaces. */
+[data-site-theme="light"] body { color: #172333; }
+[data-site-theme="light"] .text-slate-400 { color: #435466 !important; }
+[data-site-theme="light"] .text-slate-500 { color: #526476 !important; }
+[data-site-theme="light"] .text-slate-600 { color: #68798a !important; }
+[data-site-theme="light"] .site-shell .text-white { color: #142433 !important; }
+[data-site-theme="light"] .site-shell .text-slate-100 { color: #172333 !important; }
+[data-site-theme="light"] .site-shell .text-slate-200 { color: #263849 !important; }
+[data-site-theme="light"] .site-shell .text-slate-300 { color: #3b4e60 !important; }
+[data-site-theme="light"] .site-shell .field-input { color: #172333 !important; background: #fff !important; border-color: #cbd8df !important; }
+[data-site-theme="light"] input::placeholder, [data-site-theme="light"] textarea::placeholder { color: #68798a !important; }
