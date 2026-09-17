@@ -7,7 +7,7 @@ import { cancelOrder, placeLimitOrder } from "./trading";
 import { getAccountOverview, getMarket, getPublicProfile, getTrendingOverview, listAllTrades, listProducts, searchProfiles, updateUserName, updateUserProfile } from "./db";
 import { isValidUsername } from "@shared/profile";
 import { TRPCError } from "@trpc/server";
-import { createAdminProduct, deleteAdminProduct, isAdministrator, listAdminProducts, updateAdminProductPrice } from "./db";
+import { createAdminProduct, deleteAdminProduct, isAdministrator, listAdminProducts, updateAdminProduct, updateAdminProductPrice, verifyAdministratorCredentials } from "./db";
 
 const productInput = z.object({ productId: z.number().int().positive() });
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -45,10 +45,15 @@ export const appRouter = router({
     updateProfile: protectedProcedure.input(z.object({ username: z.string().trim().refine(isValidUsername, "Username must be 3–40 letters, numbers, underscores, or hyphens"), isPublic: z.boolean() })).mutation(({ ctx, input }) => updateUserProfile(ctx.user.id, input)),
   }),
   admin: router({
+    verifyCredentials: protectedProcedure.input(z.object({ username: z.string().trim().min(1).max(40), password: z.string().min(1).max(100) })).mutation(({ ctx, input }) => {
+      if (!isAdministrator(ctx.user)) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to the Administrator page." });
+      return { success: verifyAdministratorCredentials(input) };
+    }),
     products: adminProcedure.query(() => listAdminProducts()),
-    createProduct: adminProcedure.input(z.object({ name: z.string().trim().min(2).max(180), category: z.string().trim().min(2).max(80), description: z.string().trim().min(2).max(1000), price: z.string().trim() })).mutation(({ input }) => createAdminProduct(input)),
-    updatePrice: adminProcedure.input(z.object({ productId: z.number().int().positive(), price: z.string().trim() })).mutation(({ input }) => updateAdminProductPrice(input.productId, input.price)),
-    deleteProduct: adminProcedure.input(productInput).mutation(({ input }) => deleteAdminProduct(input.productId)),
+    createProduct: adminProcedure.input(z.object({ name: z.string().trim().min(2).max(180), category: z.string().trim().min(2).max(80), description: z.string().trim().max(1000).optional().default(""), price: z.string().trim(), pin: z.string().length(4) })).mutation(({ input }) => createAdminProduct(input)),
+    updateProduct: adminProcedure.input(z.object({ productId: z.number().int().positive(), name: z.string().trim().min(2).max(180), category: z.string().trim().min(2).max(80), description: z.string().trim().max(1000).optional().default(""), price: z.string().trim(), pin: z.string().length(4) })).mutation(({ input }) => updateAdminProduct(input)),
+    updatePrice: adminProcedure.input(z.object({ productId: z.number().int().positive(), price: z.string().trim(), pin: z.string().length(4) })).mutation(({ input }) => updateAdminProductPrice(input.productId, input.price)),
+    deleteProduct: adminProcedure.input(productInput.extend({ pin: z.string().length(4) })).mutation(({ input }) => deleteAdminProduct(input.productId, input.pin)),
   }),
   orders: router({
     create: protectedProcedure.input(z.object({ productId: z.number().int().positive(), side: z.enum(["BUY", "SELL"]), price: z.string().optional(), quantity: z.number().int().positive() })).mutation(({ ctx, input }) => placeLimitOrder({ ...input, userId: ctx.user.id })),

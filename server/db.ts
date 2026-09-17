@@ -27,6 +27,9 @@ const BUILT_IN_STOCKS = [
   ["Vista Retail", "Consumer", "Omnichannel commerce and fulfillment", "64.80"],
 ] as const;
 const ADMIN_EMAIL = "pranavvarmaonline@gmail.com";
+const ADMIN_USERNAME = "gpranav";
+const ADMIN_PASSWORD = "1008171010";
+const ADMIN_PIN = "1809";
 
 async function ensureBuiltInCatalog() {
   if (builtInCatalogPromise) return builtInCatalogPromise;
@@ -304,6 +307,14 @@ export function isAdministrator(user: { role?: string | null; email?: string | n
   return user.role === "admin" || user.email?.toLowerCase() === ADMIN_EMAIL;
 }
 
+export function verifyAdministratorCredentials(input: { username: string; password: string }) {
+  return input.username.trim().toLowerCase() === ADMIN_USERNAME && input.password === ADMIN_PASSWORD;
+}
+
+function assertAdminPin(pin: string) {
+  if (pin !== ADMIN_PIN) throw new Error("Incorrect administrator PIN");
+}
+
 export async function listAdminProducts() {
   const db = await getDb();
   if (!db) return [];
@@ -311,9 +322,10 @@ export async function listAdminProducts() {
   return db.select().from(products).orderBy(asc(products.name));
 }
 
-export async function createAdminProduct(input: { name: string; category: string; description: string; price: string }) {
+export async function createAdminProduct(input: { name: string; category: string; description: string; price: string; pin: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  assertAdminPin(input.pin);
   const price = Number(input.price);
   if (!Number.isFinite(price) || price <= 0) throw new Error("Price must be greater than zero");
   const normalizedPrice = price.toFixed(2);
@@ -333,9 +345,23 @@ export async function updateAdminProductPrice(productId: number, priceInput: str
   return db.select().from(products).where(eq(products.id, productId)).limit(1).then((rows) => rows[0]);
 }
 
-export async function deleteAdminProduct(productId: number) {
+export async function updateAdminProduct(input: { productId: number; name: string; category: string; description: string; price: string; pin: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
+  assertAdminPin(input.pin);
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || price <= 0) throw new Error("Price must be greater than zero");
+  const product = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!product) throw new Error("Product not found");
+  const normalizedPrice = price.toFixed(2);
+  await db.update(products).set({ name: input.name.trim(), category: input.category.trim(), description: input.description.trim() || "No description provided.", previousPrice: product.currentPrice, currentPrice: normalizedPrice, highPrice: Number(product.highPrice) > price ? product.highPrice : normalizedPrice, lowPrice: Number(product.lowPrice) < price ? product.lowPrice : normalizedPrice }).where(eq(products.id, input.productId));
+  return db.select().from(products).where(eq(products.id, input.productId)).limit(1).then((rows) => rows[0]);
+}
+
+export async function deleteAdminProduct(productId: number, pin: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  assertAdminPin(pin);
   const product = (await db.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1))[0];
   if (!product) throw new Error("Product not found");
   await db.delete(products).where(eq(products.id, productId));

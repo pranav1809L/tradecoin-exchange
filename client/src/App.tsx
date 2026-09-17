@@ -10,6 +10,8 @@ import AllOnlineTrades from "./pages/AllOnlineTrades";
 import Trending from "./pages/Trending";
 import SearchPeople from "./pages/SearchPeople";
 import Administrator from "./pages/Administrator";
+import AdminAddProduct from "./pages/AdminAddProduct";
+import AdminEditProduct from "./pages/AdminEditProduct";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -21,6 +23,8 @@ function Router() {
       <Route path={"/trending"} component={Trending} />
       <Route path={"/search"} component={SearchPeople} />
       <Route path={"/administrator"} component={Administrator} />
+      <Route path={"/administrator/add"} component={AdminAddProduct} />
+      <Route path={"/administrator/edit"} component={AdminEditProduct} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
