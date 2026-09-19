@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -285,7 +286,7 @@ export default function Home() {
 
 
 
-          <footer className="mt-10 flex flex-col justify-between gap-3 border-t border-white/[0.07] py-6 text-[10px] uppercase tracking-[0.14em] text-slate-600 sm:flex-row"><span>TradeCoin Exchange · Virtual economy only</span><span className="flex items-center gap-2"><ShieldCheck size={12} /> No real-money payments · Backend source of truth</span></footer>
+          <footer className="mt-10 flex flex-col justify-between gap-4 border-t border-white/[0.07] py-6 text-[10px] uppercase tracking-[0.14em] text-slate-600 sm:flex-row"><div className="flex flex-wrap items-center gap-x-5 gap-y-2"><span>TradeCoin Exchange · Virtual economy only</span><span className="flex items-center gap-4 normal-case tracking-normal"><Link href="/faqs" className="font-semibold text-slate-400 transition hover:text-[#69ddbd]">FAQs</Link><Link href="/about" className="font-semibold text-slate-400 transition hover:text-[#69ddbd]">About</Link></span></div><span className="flex items-center gap-2"><ShieldCheck size={12} /> No real-money payments · Backend source of truth</span></footer>
         </main>
       </div>
     </div>

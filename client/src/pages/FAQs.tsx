@@ -1,0 +1,19 @@
+import { Link } from "wouter";
+import { ArrowLeft, ChevronDown, CircleHelp, ShieldCheck } from "lucide-react";
+
+const QUESTIONS = [
+  ["What is TradeCoin Exchange?", "TradeCoin Exchange is a virtual marketplace where you practice buying and selling simulated products with TradeCoin (TC). It uses no real-money payments."],
+  ["How do I start trading?", "Open Discover or select a product from Market discovery. Choose Buy or Sell, enter a limit price and quantity, then sign in to place the order."],
+  ["What is a limit order?", "A limit order tells the exchange the price you are willing to pay when buying or the minimum price you will accept when selling. Your order waits in the public order book until it can be matched."],
+  ["Why can other people see my order?", "Orders are public so every participant can understand the available market. The order book shows price, quantity, and the display name attached to each order."],
+  ["How do I sell a product?", "You can sell units that you hold in your portfolio. Select Sell, choose a holding, enter your price and quantity, and submit the order."],
+  ["What happens when an order matches?", "The server matches compatible buy and sell orders, transfers TC and product units atomically, records the trade, and updates both portfolios."],
+  ["What are profit and loss figures?", "Profit and loss are estimates based on your completed trade price compared with the product's reference or current market price. Profitable results appear in green and losses in red."],
+  ["Can I cancel an order?", "Yes. Open Orders lets you cancel an unmatched order. Reserved TC or units are released automatically by the backend."],
+  ["What does the TradeCoin Market Maker do?", "The market maker supplies initial sell inventory and liquidity for built-in products. It may appear as the seller so new users can buy units even when no other user has placed a sell order."],
+  ["Is this real money or real investing advice?", "No. TradeCoin is a simulated learning environment. Balances, products, and prices are virtual and should not be treated as financial advice or real investment opportunities."],
+];
+
+export default function FAQs() {
+  return <div className="site-shell min-h-screen bg-[#071019] text-slate-100"><header className="border-b border-white/[0.07] bg-[#071019]/90 px-4 py-5 backdrop-blur-xl"><div className="mx-auto flex max-w-5xl items-center justify-between"><Link href="/" className="flex items-center gap-2 text-sm font-bold text-slate-100"><ArrowLeft size={16} className="text-[#69ddbd]" /> Back to exchange</Link><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500"><ShieldCheck size={13} className="text-[#69ddbd]" /> Virtual economy only</div></div></header><main className="mx-auto max-w-5xl px-4 py-12 sm:px-6"><div className="max-w-2xl"><div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#69ddbd]/20 bg-[#69ddbd]/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#8ceacd]"><CircleHelp size={13} /> Getting started</div><h1 className="text-3xl font-bold tracking-tight text-white sm:text-5xl">Frequently asked questions</h1><p className="mt-4 text-sm leading-7 text-slate-400">A quick guide to placing orders, reading the market, and understanding the virtual economy.</p></div><div className="mt-10 space-y-3">{QUESTIONS.map(([question, answer]) => <details key={question} className="group rounded-2xl border border-white/[0.08] bg-[#0b1722]/85 p-5"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-slate-100 [&::-webkit-details-marker]:hidden"><span>{question}</span><ChevronDown size={17} className="shrink-0 text-[#69ddbd] transition group-open:rotate-180" /></summary><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">{answer}</p></details>)}</div></main></div>;
+}
